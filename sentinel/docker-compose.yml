@@ -1,0 +1,84 @@
+version: "3.9"
+
+networks:
+  net:
+    name: net
+
+services:
+  # docker exec -it redis-6.0-master redis-cli -h 10.13.97.35 -p 46379
+  # info replication
+  redis-6.0-master:
+    image: redis:6-alpine
+    container_name: redis-6.0-master
+    command: redis-server --appendonly yes
+    ports:
+      - '46379:6379'
+    volumes:
+      - ./_volumes/redis-6.0-master:/data
+    networks:
+      - net
+
+  redis-6.0-slave-1:
+    image: redis:6-alpine
+    container_name: redis-6.0-slave-1
+    command: redis-server --slaveof 10.13.97.35 46379 --slave-announce-ip 10.13.97.35 --slave-announce-port 46380
+    ports:
+      - '46380:6379'
+    volumes:
+      - ./_volumes/redis-6.0-slave-1:/data
+    depends_on:
+      - redis-6.0-master
+    networks:
+      - net
+
+  redis-6.0-slave-2:
+    image: redis:6-alpine
+    container_name: redis-6.0-slave-2
+    command: redis-server --slaveof 10.13.97.35 46379 --slave-announce-ip 10.13.97.35 --slave-announce-port 46381
+    ports:
+      - '46381:6379'
+    volumes:
+      - ./_volumes/redis-6.0-slave-2:/data
+    depends_on:
+      - redis-6.0-master
+    networks:
+      - net
+
+  redis-6.0-sentinel-1:
+    image: redis:6-alpine
+    container_name: redis-6.0-sentinel-1
+    command: redis-server /etc/redis/sentinel.conf --sentinel
+    ports:
+      - '26379:26379'
+    volumes:
+      - ./sentinel-6.0/1:/etc/redis
+    depends_on:
+      - redis-6.0-master
+      - redis-6.0-slave-1
+      - redis-6.0-slave-2
+
+  redis-6.0-sentinel-2:
+    image: redis:6-alpine
+    container_name: redis-6.0-sentinel-2
+    command: redis-server /etc/redis/sentinel.conf --sentinel
+    ports:
+      - '26380:26379'
+    volumes:
+      - ./sentinel-6.0/2:/etc/redis
+    depends_on:
+      - redis-6.0-master
+      - redis-6.0-slave-1
+      - redis-6.0-slave-2
+
+  redis-6.0-sentinel-3:
+    image: redis:6-alpine
+    container_name: redis-6.0-sentinel-3
+    command: redis-server /etc/redis/sentinel.conf --sentinel
+    ports:
+      - '26381:26379'
+    volumes:
+      - ./sentinel-6.0/3:/etc/redis
+    depends_on:
+      - redis-6.0-master
+      - redis-6.0-slave-1
+      - redis-6.0-slave-2
